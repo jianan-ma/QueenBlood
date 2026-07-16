@@ -1,0 +1,9 @@
+{
+	"name":"掷弹兵",
+	"type":0,
+	"power":1,
+	"cost":2,
+	"reinScore":[{"dr":0,"dc":2,"value":-4}],
+	"rein_range":1,
+	"skill_timing":0
+}

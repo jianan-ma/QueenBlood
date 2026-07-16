@@ -1,0 +1,10 @@
+{
+	"name":"卡姆之牙",
+	"type":0,
+	"power":2,
+	"cost":1,
+	"reinCamp": [
+        { "dr": -1, "dc": 0, "value": 1 },
+	 { "dr": 0, "dc": 1, "value": 1 }
+	]
+}

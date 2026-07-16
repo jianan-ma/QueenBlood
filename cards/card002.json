@@ -1,0 +1,13 @@
+{
+	"name":"镇压兵",
+	"type":0,
+	"power":3,
+	"cost":2,
+	"reinCamp": [
+	{ "dr": -2, "dc": 0, "value": 1 },
+        { "dr": -1, "dc": 0, "value": 1 },
+        { "dr": 0, "dc": 1, "value": 1 },
+        { "dr": 1, "dc": 0, "value": 1 },
+        { "dr": 2, "dc": 0, "value": 1 }
+	]
+}

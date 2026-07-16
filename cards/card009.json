@@ -1,0 +1,13 @@
+{
+	"name":"掘地鼠",
+	"type":0,
+	"power":1,
+	"cost":2,
+	"reinCamp": [
+        { "dr": -1, "dc": 1, "value": 1 },
+	 { "dr": 0, "dc": 1, "value": 1 }
+	],
+	"reinScore":[{"dr":1,"dc":0,"value":1}],
+	"rein_range":0,
+	"skill_timing":1
+}
