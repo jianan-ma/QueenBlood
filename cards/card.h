@@ -39,6 +39,7 @@ class Card : public QObject
     Q_OBJECT
 public:
     explicit Card(QObject *parent = nullptr);
+    void loadCard(const QString &cardFile);
     TYPE getType();
     QString getSource();
     QString getName();
