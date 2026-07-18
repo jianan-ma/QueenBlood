@@ -38,7 +38,7 @@ class Card : public QObject
 {
     Q_OBJECT
 public:
-    explicit Card(QObject *parent = nullptr);
+    explicit Card(int mirror = 1, QObject *parent = nullptr);
     void loadCard(const QString &cardFile);
     TYPE getType();
     QString getSource();
@@ -61,6 +61,7 @@ protected:
     SKILL_TIMING skill_timing;
     QHash<Offset,int> reinCamp;
     QHash<Offset,int> reinScore;
+    int m_mirror=1;
 
 signals:
     void sig_destroyed();

@@ -4,9 +4,10 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QFile>
-Card::Card(QObject *parent) : QObject(parent)
-{
 
+Card::Card(int mirror, QObject *parent)
+{
+    m_mirror = mirror;
 }
 
 void Card::loadCard(const QString &cardFile)
@@ -28,7 +29,24 @@ void Card::loadCard(const QString &cardFile)
                 int dr = obj_camp.value("dr").toInt();
                 int dc = obj_camp.value("dc").toInt();
                 int v = obj_camp.value("value").toInt();
+                reinCamp.insert({dr,dc*m_mirror},v);
             }
+        }
+        if(obj.contains("reinScore")){
+            QJsonArray arr_camp = obj.value("reinScore").toArray();
+            for(QJsonValue value:arr_camp){
+                QJsonObject obj_camp = value.toObject();
+                int dr = obj_camp.value("dr").toInt();
+                int dc = obj_camp.value("dc").toInt();
+                int v = obj_camp.value("value").toInt();
+                reinScore.insert({dr,dc*m_mirror},v);
+            }
+        }
+        if(obj.contains("rein_range")){
+            rein_range = REIN_RANGE(obj.value("rein_range").toInt());
+        }
+        if(obj.contains("skill_timing")){
+            skill_timing = SKILL_TIMING(obj.value("skill_timing").toInt());
         }
     }
 }

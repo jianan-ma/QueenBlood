@@ -22,14 +22,18 @@ SOURCES += \
     cellwidget.cpp \
     gamecontroller.cpp \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    cardwidget.cpp \
+    cardhandpanel.cpp
 
 HEADERS += \
     battlefield.h \
     cellunit.h \
     cellwidget.h \
     gamecontroller.h \
-    mainwindow.h
+    mainwindow.h \
+    cardwidget.h \
+    cardhandpanel.h
 
 FORMS += \
     mainwindow.ui
@@ -38,3 +42,6 @@ FORMS += \
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+RESOURCES += \
+    res.qrc

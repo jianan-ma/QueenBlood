@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/json">
+        <file>cards/card001.json</file>
+        <file>cards/card002.json</file>
+        <file>cards/card003.json</file>
+        <file>cards/card004.json</file>
+        <file>cards/card005.json</file>
+        <file>cards/card006.json</file>
+        <file>cards/card007.json</file>
+        <file>cards/card008.json</file>
+        <file>cards/card009.json</file>
+    </qresource>
+</RCC>

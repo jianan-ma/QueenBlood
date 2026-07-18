@@ -37,7 +37,12 @@ public:
     
     // 选择卡牌准备放置
     void selectCard(Card* card);
-    
+    // 进入预览模式
+    void reviewMode(CellUnit* placedCell);
+    // 计算阵营扩张
+    void calculateCampChange(CellUnit* placedCell);
+    // 从预览阵营中退出
+    void recoverCampChange(CellUnit* placedCell);
     // 放置卡牌到单元格
     bool placeCard(CellUnit* targetCell);
     
@@ -68,8 +73,7 @@ signals:
     void sig_updateScore(int r1,int b1,int r2,int b2,int r3,int b3);
     void sig_result(GAME_RESULT result);
 private:
-    // 计算阵营扩张
-    void calculateCampChange(CellUnit* placedCell);
+
     // 计算强化效果
     void calculateReinforcements(CellUnit* placedCell);
     // 计算得分
@@ -93,6 +97,8 @@ private:
     int score_blue2=0;
     int score_blue3=0;
     bool skipTurn=false;
+    bool m_isPreviewing = false;
+    QVector<CellUnit*> m_previewedCells;
 };
 
 #endif // GAMECONTROLLER_H

@@ -29,6 +29,7 @@ public:
     void addScore(int sco);
     void redScore(int sco);
     void destroyCard();
+    void previewCampChange(bool ok);
 private:
     CAMP m_camp_area = CAMP::CAMP_NULL;
     CAMP m_camp_card = CAMP::CAMP_NULL;
@@ -37,6 +38,9 @@ private:
     quint8 m_row;
     quint8 m_col;
     Card* m_card = nullptr;
+    CAMP m_original_camp_area = CAMP::CAMP_NULL;
+    int m_original_camplevel = 0;
+    bool m_isPreviewing = false;
 signals:
 
 };

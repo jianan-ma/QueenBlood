@@ -91,3 +91,17 @@ void CellUnit::destroyCard()
     m_camplevel = 0;
     m_score = 0;
 }
+
+void CellUnit::previewCampChange(bool ok)
+{
+    if(ok){
+        m_original_camp_area = m_camp_area;
+        m_original_camplevel = m_camplevel;
+        m_isPreviewing = true;
+    }
+    else{
+        m_camp_area = m_original_camp_area;
+        m_camplevel = m_original_camplevel;
+        m_isPreviewing = false;
+    }
+}

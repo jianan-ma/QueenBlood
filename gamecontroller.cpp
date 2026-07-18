@@ -21,6 +21,25 @@ void GameController::selectCard(Card* card)
     emit sig_gameStateChanged(m_gameState);
 }
 
+void GameController::reviewMode(CellUnit* placedCell)
+{
+    if(m_selectedCard == nullptr)
+        return;
+    
+    if(!canPlaceCard(placedCell)) {
+        recoverCampChange(nullptr);
+        return;
+    }
+    
+    recoverCampChange(nullptr);
+    
+    m_isPreviewing = true;
+    calculateCampChange(placedCell);
+    for(CellUnit* cell : m_previewedCells) {
+        emit sig_cellUpdated(cell);
+    }
+}
+
 bool GameController::canPlaceCard(CellUnit* cell) const
 {
     if(!m_selectedCard) return false;
@@ -67,26 +86,27 @@ bool GameController::placeCard(CellUnit* targetCell)
 {
     if(!canPlaceCard(targetCell)) return false;
     
+    recoverCampChange(nullptr);
+    
     CAMP playerCamp = (m_currentTurn == CAMP_TURN::TURN_RED) ? 
                       CAMP::CAMP_RED : CAMP::CAMP_BLUE;
     if(targetCell->getCampLevel()<m_selectedCard->getCost())
         return false;
     skipTurn = false;
-    // 放置卡牌
+    
     targetCell->changeCampCard(m_selectedCard, playerCamp, m_selectedCard->getPower());
-//    targetCell->changeCampArea(playerCamp, m_selectedCard->getCost());
     
     emit sig_cardPlaced(m_currentTurn,m_selectedCard);
     emit sig_cellUpdated(targetCell);
+    
     calculateCampChange(targetCell);
-    // 计算强化效果
+    
     calculateReinforcements(targetCell);
     
-    // 检查战斗
     checkBattles(targetCell);
     
     calculateRowsScore();
-    // 重置选择状态
+    
     m_selectedCard = nullptr;
     m_gameState = GAME_STATE::STATE_PLAYER_TURN;
     emit sig_gameStateChanged(m_gameState);
@@ -228,6 +248,7 @@ void GameController::endTurn()
     else{
         m_currentTurn = (m_currentTurn == CAMP_TURN::TURN_RED) ?
                         CAMP_TURN::TURN_BLUE : CAMP_TURN::TURN_RED;
+        qDebug()<<"turn"<<int(m_currentTurn);
         m_selectedCard = nullptr;
         m_gameState = GAME_STATE::STATE_PLAYER_TURN;
         skipTurn = true;
@@ -255,6 +276,7 @@ void GameController::calculateCampChange(CellUnit *placedCell)
     QHash<Offset,int> reinCamp = m_selectedCard->getReinCamp();
     int placerow=placedCell->getrow();
     int placecol=placedCell->getcol();
+    
     for(QHash<Offset,int>::const_iterator i = reinCamp.constBegin();i != reinCamp.constEnd();++i){
         Offset point = i.key();
         if(placerow+point.drow<0 || placerow+point.drow>2 || placecol+point.dcol<0 || placecol+point.dcol>4)
@@ -262,6 +284,12 @@ void GameController::calculateCampChange(CellUnit *placedCell)
         int targetindex = (placerow+point.drow)*5+placecol+point.dcol;
         if(m_cells[targetindex]->getCampCard()!=CAMP::CAMP_NULL)
             continue;
+        
+        if(m_isPreviewing){
+            m_cells[targetindex]->previewCampChange(true);
+            m_previewedCells.append(m_cells[targetindex]);
+        }
+        
         int value = i.value();
         if(m_currentTurn==CAMP_TURN::TURN_RED){
             if(m_cells[targetindex]->getCampArea()==CAMP::CAMP_RED){
@@ -280,4 +308,21 @@ void GameController::calculateCampChange(CellUnit *placedCell)
             }
         }
     }
+}
+
+void GameController::recoverCampChange(CellUnit* placedCell)
+{
+    Q_UNUSED(placedCell);
+    
+    if(!m_isPreviewing || m_selectedCard==nullptr)
+        return;
+    
+    m_isPreviewing = false;
+    
+    for(CellUnit* cell : m_previewedCells) {
+        cell->previewCampChange(false);
+        emit sig_cellUpdated(cell);
+    }
+    
+    m_previewedCells.clear();
 }
