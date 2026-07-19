@@ -90,8 +90,6 @@ bool GameController::placeCard(CellUnit* targetCell)
     
     CAMP playerCamp = (m_currentTurn == CAMP_TURN::TURN_RED) ? 
                       CAMP::CAMP_RED : CAMP::CAMP_BLUE;
-    if(targetCell->getCampLevel()<m_selectedCard->getCost())
-        return false;
     skipTurn = false;
     
     targetCell->changeCampCard(m_selectedCard, playerCamp, m_selectedCard->getPower());
@@ -116,24 +114,37 @@ bool GameController::placeCard(CellUnit* targetCell)
 
 void GameController::calculateReinforcements(CellUnit* placedCell)
 {
-//    if(!placedCell->getCampCard()) return;
-    
-//    QHash<int, int> reinCamp = placedCell->getCampCard()->getReinCamp();
-    
-//    for(auto it = reinCamp.begin(); it != reinCamp.end(); ++it) {
-//        int offset = it.key();
-//        int levelBonus = it.value();
-        
-//        int targetPos = placedCell->getPos() + offset;
-//        if(targetPos >= 0 && targetPos < m_cells.size()) {
-//            CellUnit* targetCell = m_cells[targetPos];
-//            if(targetCell->getCampCard() != CAMP::CAMP_NULL &&
-//               targetCell->getCampCard() == placedCell->getCampCard()) {
-//                targetCell->addLevel(levelBonus);
-//                emit sig_cellUpdated(targetCell);
-//            }
-//        }
-    //    }
+    int placerow=placedCell->getrow();
+    int placecol=placedCell->getcol();
+    QHash<Offset,int> reinScore = m_selectedCard->getReinScore();
+    for(QHash<Offset,int>::const_iterator i = reinScore.constBegin();i != reinScore.constEnd();++i){
+        Offset point = i.key();
+        if(placerow+point.drow<0 || placerow+point.drow>2 || placecol+point.dcol<0 || placecol+point.dcol>4)
+            continue;
+        int targetindex = (placerow+point.drow)*5+placecol+point.dcol;
+        CAMP cardcamp = m_cells[targetindex]->getCampCard();
+        if(cardcamp==CAMP::CAMP_NULL)
+            continue;
+        if(m_selectedCard->getReinRange()==REIN_RANGE::SELF){
+            if(m_currentTurn==CAMP_TURN::TURN_RED && cardcamp==CAMP::CAMP_RED){
+                m_cells[targetindex]->addScore(i.value());
+            }
+            else if(m_currentTurn==CAMP_TURN::TURN_BLUE && cardcamp==CAMP::CAMP_BLUE){
+                m_cells[targetindex]->addScore(i.value());
+            }
+        }
+        else if(m_selectedCard->getReinRange()==REIN_RANGE::OPPONENT){
+            if(m_currentTurn==CAMP_TURN::TURN_RED && cardcamp==CAMP::CAMP_BLUE){
+                m_cells[targetindex]->addScore(i.value());
+            }
+            else if(m_currentTurn==CAMP_TURN::TURN_BLUE && cardcamp==CAMP::CAMP_RED){
+                m_cells[targetindex]->addScore(i.value());
+            }
+        }
+        else{
+            m_cells[targetindex]->addScore(i.value());
+        }
+    }
 }
 
 void GameController::calculateRowsScore()

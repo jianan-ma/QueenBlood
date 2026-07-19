@@ -4,7 +4,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QFile>
-
+#include <QDebug>
 Card::Card(int mirror, QObject *parent)
 {
     m_mirror = mirror;

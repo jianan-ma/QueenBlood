@@ -70,6 +70,13 @@ void CellUnit::redLevel(int lev)
 void CellUnit::addScore(int sco)
 {
     m_score+=sco;
+    if(m_score<=0){
+        m_camp_card = CAMP::CAMP_NULL;
+        m_card->destroy();
+        m_card = nullptr;
+//        delete m_card;
+        m_score = 0;
+    }
 }
 
 void CellUnit::redScore(int sco)
