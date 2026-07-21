@@ -51,6 +51,7 @@ public:
     SKILL_TIMING getSkillTiming();
     virtual void destroy();
     virtual void skill();
+    QVector<int> getSummonVector();
 protected:
     TYPE m_type;
     QString m_source;
@@ -62,12 +63,14 @@ protected:
     QHash<Offset,int> reinCamp;
     QHash<Offset,int> reinScore;
     int m_mirror=1;
+    QVector<int> summon;
 
 signals:
     void sig_destroyed();
     void sig_reinforced();
     void sig_weakened();
     void sig_addCard(Card*);
+    void sig_summon(int);
 };
 
 #endif // CARD_H

@@ -72,6 +72,7 @@ signals:
     void sig_battleResult(CellUnit* attacker, CellUnit* defender, bool attackerWin);
     void sig_updateScore(int r1,int b1,int r2,int b2,int r3,int b3);
     void sig_result(GAME_RESULT result);
+    void sig_summonCard(int id);
 private:
 
     // 计算强化效果
@@ -83,7 +84,8 @@ private:
     
     // 执行战斗逻辑
     void executeBattle(CellUnit* attacker, CellUnit* defender);
-    
+    // 召唤技能
+    void summonSkill();
     QVector<CellUnit*> m_cells;
     GAME_STATE m_gameState;
     CAMP_TURN m_currentTurn;

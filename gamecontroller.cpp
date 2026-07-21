@@ -100,7 +100,7 @@ bool GameController::placeCard(CellUnit* targetCell)
     calculateCampChange(targetCell);
     
     calculateReinforcements(targetCell);
-    
+    summonSkill();
     checkBattles(targetCell);
     
     calculateRowsScore();
@@ -219,6 +219,18 @@ void GameController::executeBattle(CellUnit* attacker, CellUnit* defender)
     
     emit sig_cellUpdated(attacker);
     emit sig_cellUpdated(defender);
+}
+
+void GameController::summonSkill()
+{
+    if(m_selectedCard->getSummonVector().isEmpty())
+        return;
+    if(m_selectedCard->getSkillTiming()!=SKILL_TIMING::PLACED)
+        return;
+    QVector<int> summonlist = m_selectedCard->getSummonVector();
+    for(int id:summonlist){
+        emit sig_summonCard(id);
+    }
 }
 
 GAME_STATE GameController::getGameState() const

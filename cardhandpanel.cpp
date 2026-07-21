@@ -36,6 +36,34 @@ void CardHandPanel::addCard(Card* card)
     });
 }
 
+void CardHandPanel::addCard(int id)
+{
+    Card *card = new Card;
+    QString str_id = QString::number(id);
+    while (str_id.length()<3) {
+        str_id.prepend('0');
+    }
+    card->loadCard(":/json/cards/card"+str_id+".json");
+    CardWidget* widget = new CardWidget(card, this);
+    m_cardWidgets.append(widget);
+    m_layout->addWidget(widget);
+
+    connect(widget, &CardWidget::clicked, this, [this, widget](Card* card) {
+        if(m_selectedWidget == widget) {
+            widget->setSelected(false);
+            m_selectedWidget = nullptr;
+            emit cardDeselected();
+        } else {
+            if(m_selectedWidget) {
+                m_selectedWidget->setSelected(false);
+            }
+            m_selectedWidget = widget;
+            widget->setSelected(true);
+            emit cardSelected(card);
+        }
+    });
+}
+
 void CardHandPanel::removeCard(Card* card)
 {
     for(int i = 0; i < m_cardWidgets.size(); ++i) {

@@ -20,7 +20,8 @@ public:
     void selectCard(Card* card);
     Card* getSelectedCard() const;
     QVector<Card*> getCards() const;
-
+public slots:
+    void addCard(int id);
 private:
     QHBoxLayout* m_layout;
     QVector<CardWidget*> m_cardWidgets;

@@ -48,6 +48,12 @@ void Card::loadCard(const QString &cardFile)
         if(obj.contains("skill_timing")){
             skill_timing = SKILL_TIMING(obj.value("skill_timing").toInt());
         }
+        if(obj.contains("summon")){
+            QJsonArray arr_summon = obj.value("summon").toArray();
+            for(QJsonValue value:arr_summon){
+                summon.append(value.toInt());
+            }
+        }
     }
 }
 
@@ -98,10 +104,22 @@ SKILL_TIMING Card::getSkillTiming()
 
 void Card::destroy()
 {
-    emit sig_destroyed();
+//    emit sig_destroyed();
+    if(summon.isEmpty())
+        return;
+    if(skill_timing!=SKILL_TIMING::DESTROY)
+        return;
+    for(int id:summon){
+        emit sig_summon(id);
+    }
 }
 
 void Card::skill()
 {
 
+}
+
+QVector<int> Card::getSummonVector()
+{
+    return summon;
 }

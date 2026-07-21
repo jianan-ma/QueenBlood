@@ -22,7 +22,7 @@ BattleField::BattleField(QWidget *parent) : QWidget(parent)
     connect(m_controller,&GameController::sig_updateScore,this,&BattleField::onScoreUpdate);
     connect(m_controller,&GameController::sig_result,this,&BattleField::sig_result);
     connect(m_controller,&GameController::sig_cardPlaced,this,&BattleField::onCardPlaced);
-    
+    connect(m_controller,&GameController::sig_summonCard,this,&BattleField::getSummonCard);
     connect(m_redCardPanel, &CardHandPanel::cardSelected, this, &BattleField::onCardSelected);
     connect(m_redCardPanel, &CardHandPanel::cardDeselected, this, &BattleField::onCardDeselected);
     
@@ -100,12 +100,14 @@ void BattleField::addRedCard(Card *card)
 {
     m_controller->addRedCard(card);
     m_redCardPanel->addCard(card);
+    connect(card,&Card::sig_summon,m_redCardPanel,QOverload<int>::of(&CardHandPanel::addCard));
 }
 
 void BattleField::addBlueCard(Card *card)
 {
     m_controller->addBlueCard(card);
     m_blueCardPanel->addCard(card);
+    connect(card,&Card::sig_summon,m_blueCardPanel,QOverload<int>::of(&CardHandPanel::addCard));
 }
 
 void BattleField::skipTurn()
@@ -187,4 +189,14 @@ void BattleField::onCardPlaced(CAMP_TURN turn, Card *card)
         m_redCardPanel->removeCard(card);
     else
         m_blueCardPanel->removeCard(card);
+}
+
+void BattleField::getSummonCard(int id)
+{
+    if(m_controller->getCurrentTurn()==CAMP_TURN::TURN_RED){
+        m_redCardPanel->addCard(id);
+    }
+    else{
+        m_blueCardPanel->addCard(id);
+    }
 }

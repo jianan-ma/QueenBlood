@@ -32,6 +32,7 @@ private slots:
     void onCardSelected(Card* card);
     void onCardDeselected();
     void onCardPlaced(CAMP_TURN turn,Card* card);
+    void getSummonCard(int id);
 private:
     QVBoxLayout* m_mainLayout;
     QGridLayout* m_gridLayout;

@@ -9,5 +9,8 @@
         { "dr": 0, "dc": 1, "value": 1 },
         { "dr": 1, "dc": 0, "value": 1 },
         { "dr": 2, "dc": 0, "value": 1 }
-	]
+        ],
+        "skill_timing":0,
+        "rein_range":1,
+        "reinScore":[{"dr":0,"dc":4,"value":-4}]
 }
