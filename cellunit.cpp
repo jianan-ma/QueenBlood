@@ -26,6 +26,11 @@ int CellUnit::getScore()
     return m_score;
 }
 
+int CellUnit::getGain()
+{
+    return m_gain;
+}
+
 int CellUnit::getrow()
 {
     return m_row;
@@ -41,6 +46,11 @@ QString CellUnit::getCardName()
     return m_card->getName();
 }
 
+Card *CellUnit::getCard()
+{
+    return m_card;
+}
+
 void CellUnit::changeCampArea(CAMP newCamp, int level)
 {
     m_camp_area = newCamp;
@@ -50,8 +60,11 @@ void CellUnit::changeCampArea(CAMP newCamp, int level)
 void CellUnit::changeCampCard(Card *newCard, CAMP camp_card, int score)
 {
     m_card = newCard;
+    connect(m_card,&Card::sig_destroyed,this,&CellUnit::onCardDestroy);
     m_camp_card = camp_card;
     m_score = score;
+    isFirstUp = false;
+    isFirstDown = false;
 }
 
 void CellUnit::addLevel(int lev)
@@ -59,33 +72,36 @@ void CellUnit::addLevel(int lev)
     m_camplevel+=lev;
 }
 
-void CellUnit::redLevel(int lev)
+void CellUnit::setLevel(int lev)
 {
-    if(m_camplevel>=lev)
-        m_camplevel-=lev;
-    else
-        m_camplevel=0;
+    m_camplevel = lev;
 }
 
 void CellUnit::addScore(int sco)
 {
     m_score+=sco;
+    m_gain+=sco;
     if(m_score<=0){
         m_camp_card = CAMP::CAMP_NULL;
         m_card->destroy();
-        m_card = nullptr;
-//        delete m_card;
         m_score = 0;
+        return;
     }
-}
-
-void CellUnit::redScore(int sco)
-{
-    if(m_score>sco)
-        m_score-=sco;
-    else{
-        m_score=0;
-        destroyCard();
+    if(m_card->getSkillTiming()==SKILL_TIMING::FIRSTTO){
+        if(m_score>=m_card->gainPerCard && !isFirstTo){
+            isFirstTo = true;
+            emit sig_firstRein(this);
+        }
+    }
+    if(sco>0&&!isFirstUp){
+        isFirstUp = true;
+        if(m_card->getSkillTiming()==SKILL_TIMING::FIRSTUP)
+            emit sig_firstRein(this);
+    }
+    else if(sco<0&&!isFirstDown){
+        isFirstDown = true;
+        if(m_card->getSkillTiming()==SKILL_TIMING::FIRSTDOWN)
+            emit sig_firstRein(this);
     }
 }
 
@@ -97,6 +113,9 @@ void CellUnit::destroyCard()
     m_camp_card = CAMP::CAMP_NULL;
     m_camplevel = 0;
     m_score = 0;
+    m_gain = 0;
+    isFirstUp = false;
+    isFirstDown = false;
 }
 
 void CellUnit::previewCampChange(bool ok)
@@ -111,4 +130,9 @@ void CellUnit::previewCampChange(bool ok)
         m_camplevel = m_original_camplevel;
         m_isPreviewing = false;
     }
+}
+
+void CellUnit::onCardDestroy(QHash<Offset, int> reinscore, REIN_RANGE reinrange)
+{
+    emit sig_CardDestroy(this,reinscore,reinrange);
 }

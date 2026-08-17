@@ -61,6 +61,9 @@ void BattleField::initBattleField()
     for(int row = 0; row < 3; ++row) {
         for(int col = 0; col < 5; ++col) {
             CellUnit* unit = new CellUnit(row, col);
+            connect(unit,&CellUnit::sig_firstRein,m_controller,&GameController::whenFirstRein);
+            connect(unit,&CellUnit::sig_firstUp,m_controller,&GameController::whenFirstDown);
+            connect(unit,&CellUnit::sig_CardDestroy,m_controller,&GameController::onCardDestroy);
             m_cellUnits.append(unit);
             
             CellWidget* widget = new CellWidget(unit, this);
@@ -199,4 +202,9 @@ void BattleField::getSummonCard(int id)
     else{
         m_blueCardPanel->addCard(id);
     }
+}
+
+void BattleField::onFirstRein(CellUnit *unit)
+{
+
 }

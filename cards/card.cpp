@@ -102,15 +102,23 @@ SKILL_TIMING Card::getSkillTiming()
     return skill_timing;
 }
 
+SKILL_TYPE Card::getSkillType()
+{
+    return skill_type;
+}
+
 void Card::destroy()
 {
-//    emit sig_destroyed();
-    if(summon.isEmpty())
-        return;
     if(skill_timing!=SKILL_TIMING::DESTROY)
         return;
-    for(int id:summon){
-        emit sig_summon(id);
+    if(!summon.isEmpty()){
+        for(int id:summon){
+            emit sig_summon(id);
+        }
+        return;
+    }
+    if(!reinScore.isEmpty()){
+        emit sig_destroyed(reinScore,rein_range);
     }
 }
 

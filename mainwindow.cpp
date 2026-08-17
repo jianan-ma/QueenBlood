@@ -27,6 +27,7 @@ MainWindow::MainWindow(QWidget *parent)
         Card *card = new Card;
         card->loadCard(jsonfile);
         Card *card2 = new Card(-1);
+
         card2->loadCard(jsonfile);
         field->addRedCard(card);
         field->addBlueCard(card2);

@@ -64,7 +64,10 @@ public:
     // 添加卡牌
     void addRedCard(Card* card);
     void addBlueCard(Card* card);
-    
+
+    void whenFirstRein(CellUnit* unit);
+public slots:
+    void onCardDestroy(CellUnit* unit,QHash<Offset, int> reinscore, REIN_RANGE reinrange);
 signals:
     void sig_gameStateChanged(GAME_STATE state);
     void sig_cellUpdated(CellUnit* cell);
@@ -74,18 +77,16 @@ signals:
     void sig_result(GAME_RESULT result);
     void sig_summonCard(int id);
 private:
-
     // 计算强化效果
     void calculateReinforcements(CellUnit* placedCell);
     // 计算得分
     void calculateRowsScore();
-    // 检查并处理战斗
-    void checkBattles(CellUnit* placedCell);
-    
-    // 执行战斗逻辑
-    void executeBattle(CellUnit* attacker, CellUnit* defender);
+    // 计算在场时，根据受强化/弱化卡牌数量计算增益
+    void calculatePlacedGainNumber();
     // 召唤技能
     void summonSkill();
+    // 计算覆盖卡牌效果
+    void calculateCoverCard(CellUnit* placedCell,int oldscore);
     QVector<CellUnit*> m_cells;
     GAME_STATE m_gameState;
     CAMP_TURN m_currentTurn;
@@ -101,6 +102,7 @@ private:
     bool skipTurn=false;
     bool m_isPreviewing = false;
     QVector<CellUnit*> m_previewedCells;
+    QVector<int> cell_sequence;
 };
 
 #endif // GAMECONTROLLER_H

@@ -43,16 +43,26 @@ void GameController::reviewMode(CellUnit* placedCell)
 bool GameController::canPlaceCard(CellUnit* cell) const
 {
     if(!m_selectedCard) return false;
-    // 检查目标单元格是否为空
-    if(cell->getCampCard() != CAMP::CAMP_NULL) return false;
-    // 检查费用
-    if(cell->getCampLevel()<m_selectedCard->getCost())
-        return false;
-    // 检查是否在己方阵营区域
-    CAMP playerCamp = (m_currentTurn == CAMP_TURN::TURN_RED) ? 
-                      CAMP::CAMP_RED : CAMP::CAMP_BLUE;
-    
-    return cell->getCampArea() == playerCamp;
+    if(m_selectedCard->getType()==TYPE::NORMAL){
+        // 检查目标单元格是否为空
+        if(cell->getCampCard() != CAMP::CAMP_NULL) return false;
+        // 检查费用
+        if(cell->getCampLevel()<m_selectedCard->getCost())
+            return false;
+        // 检查是否在己方阵营区域
+        CAMP playerCamp = (m_currentTurn == CAMP_TURN::TURN_RED) ?
+                          CAMP::CAMP_RED : CAMP::CAMP_BLUE;
+
+        return cell->getCampArea() == playerCamp;
+    }
+    else{
+        if(cell->getCampCard()==CAMP::CAMP_RED && m_currentTurn==CAMP_TURN::TURN_RED)
+            return true;
+        else if(cell->getCampCard()==CAMP::CAMP_BLUE && m_currentTurn==CAMP_TURN::TURN_BLUE)
+            return true;
+        else
+            return false;
+    }
 }
 
 bool GameController::canOperateTurn()
@@ -91,18 +101,19 @@ bool GameController::placeCard(CellUnit* targetCell)
     CAMP playerCamp = (m_currentTurn == CAMP_TURN::TURN_RED) ? 
                       CAMP::CAMP_RED : CAMP::CAMP_BLUE;
     skipTurn = false;
-    
+    int oldscore = targetCell->getScore();
     targetCell->changeCampCard(m_selectedCard, playerCamp, m_selectedCard->getPower());
-    
+    int index = targetCell->getrow()*5+targetCell->getcol();
+    cell_sequence.append(index);
     emit sig_cardPlaced(m_currentTurn,m_selectedCard);
     emit sig_cellUpdated(targetCell);
+    calculateCoverCard(targetCell,oldscore);
     
     calculateCampChange(targetCell);
     
     calculateReinforcements(targetCell);
     summonSkill();
-    checkBattles(targetCell);
-    
+    calculatePlacedGainNumber();
     calculateRowsScore();
     
     m_selectedCard = nullptr;
@@ -114,35 +125,55 @@ bool GameController::placeCard(CellUnit* targetCell)
 
 void GameController::calculateReinforcements(CellUnit* placedCell)
 {
+    //计算当前放置卡牌给其他卡牌的增益效果
     int placerow=placedCell->getrow();
     int placecol=placedCell->getcol();
-    QHash<Offset,int> reinScore = m_selectedCard->getReinScore();
-    for(QHash<Offset,int>::const_iterator i = reinScore.constBegin();i != reinScore.constEnd();++i){
-        Offset point = i.key();
-        if(placerow+point.drow<0 || placerow+point.drow>2 || placecol+point.dcol<0 || placecol+point.dcol>4)
-            continue;
-        int targetindex = (placerow+point.drow)*5+placecol+point.dcol;
-        CAMP cardcamp = m_cells[targetindex]->getCampCard();
-        if(cardcamp==CAMP::CAMP_NULL)
-            continue;
-        if(m_selectedCard->getReinRange()==REIN_RANGE::SELF){
-            if(m_currentTurn==CAMP_TURN::TURN_RED && cardcamp==CAMP::CAMP_RED){
-                m_cells[targetindex]->addScore(i.value());
+    if((m_selectedCard->getSkillTiming()==SKILL_TIMING::PLACED || m_selectedCard->getSkillTiming()==SKILL_TIMING::ALWAYS) &&
+            m_selectedCard->getSkillType()==SKILL_TYPE::DESIGNATED_GAIN && m_selectedCard->getType()==TYPE::NORMAL){
+        QHash<Offset,int> reinScore = m_selectedCard->getReinScore();
+        for(QHash<Offset,int>::const_iterator i = reinScore.constBegin();i != reinScore.constEnd();++i){
+            Offset point = i.key();
+            if(placerow+point.drow<0 || placerow+point.drow>2 || placecol+point.dcol<0 || placecol+point.dcol>4)
+                continue;
+            int targetindex = (placerow+point.drow)*5+placecol+point.dcol;
+            CAMP cardcamp = m_cells[targetindex]->getCampCard();
+            if(cardcamp==CAMP::CAMP_NULL)
+                continue;
+            if(m_selectedCard->getReinRange()==REIN_RANGE::SELF){
+                if(m_currentTurn==CAMP_TURN::TURN_RED && cardcamp==CAMP::CAMP_RED){
+                    m_cells[targetindex]->addScore(i.value());
+                }
+                else if(m_currentTurn==CAMP_TURN::TURN_BLUE && cardcamp==CAMP::CAMP_BLUE){
+                    m_cells[targetindex]->addScore(i.value());
+                }
             }
-            else if(m_currentTurn==CAMP_TURN::TURN_BLUE && cardcamp==CAMP::CAMP_BLUE){
+            else if(m_selectedCard->getReinRange()==REIN_RANGE::OPPONENT){
+                if(m_currentTurn==CAMP_TURN::TURN_RED && cardcamp==CAMP::CAMP_BLUE){
+                    m_cells[targetindex]->addScore(i.value());
+                }
+                else if(m_currentTurn==CAMP_TURN::TURN_BLUE && cardcamp==CAMP::CAMP_RED){
+                    m_cells[targetindex]->addScore(i.value());
+                }
+            }
+            else{
                 m_cells[targetindex]->addScore(i.value());
             }
         }
-        else if(m_selectedCard->getReinRange()==REIN_RANGE::OPPONENT){
-            if(m_currentTurn==CAMP_TURN::TURN_RED && cardcamp==CAMP::CAMP_BLUE){
-                m_cells[targetindex]->addScore(i.value());
+    }
+    //计算当前放置卡牌受其他在场时增益效果卡牌的增益
+    for(CellUnit *unit:m_cells){
+        if(unit->getCampCard()==CAMP::CAMP_NULL)
+            continue;
+        if(unit->getCard()->getSkillTiming()==SKILL_TIMING::ALWAYS && unit->getCard()->getSkillType()==SKILL_TYPE::DESIGNATED_GAIN){
+            int row = unit->getrow();
+            int col = unit->getcol();
+            QHash<Offset,int> rein = unit->getCard()->getReinScore();
+            for(QHash<Offset,int>::const_iterator i = rein.constBegin();i != rein.constEnd();++i){
+                Offset pos = i.key();
+                if(pos.drow+row==placerow && pos.dcol+col==placecol){
+                    placedCell->addScore(i.value());
+                }
             }
-            else if(m_currentTurn==CAMP_TURN::TURN_BLUE && cardcamp==CAMP::CAMP_RED){
-                m_cells[targetindex]->addScore(i.value());
-            }
-        }
-        else{
-            m_cells[targetindex]->addScore(i.value());
         }
     }
 }
@@ -179,46 +210,24 @@ void GameController::calculateRowsScore()
     emit sig_updateScore(score_red1,score_blue1,score_red2,score_blue2,score_red3,score_blue3);
 }
 
-void GameController::checkBattles(CellUnit* placedCell)
+void GameController::calculatePlacedGainNumber()
 {
-    // 检查上下左右四个方向
-//    QVector<int> directions = {-5, -1, 1, 5}; // 上、左、右、下
-    
-//    for(int dir : directions) {
-//        int targetPos = placedCell->getPos() + dir;
-//        if(targetPos >= 0 && targetPos < m_cells.size()) {
-//            CellUnit* adjacentCell = m_cells[targetPos];
-            
-//            // 检查是否有敌方卡牌
-//            if(adjacentCell->getCampCard() != CAMP::CAMP_NULL &&
-//               adjacentCell->getCampCard() != placedCell->getCampCard()) {
-//                executeBattle(placedCell, adjacentCell);
-//            }
-//        }
-//    }
-}
-
-void GameController::executeBattle(CellUnit* attacker, CellUnit* defender)
-{
-    int attackerPower = attacker->getScore() * attacker->getCampLevel();
-    int defenderPower = defender->getScore() * defender->getCampLevel();
-    
-    bool attackerWin = attackerPower >= defenderPower;
-    
-    emit sig_battleResult(attacker, defender, attackerWin);
-    
-    if(attackerWin) {
-        // 攻击方胜利，防御方卡牌被摧毁
-        defender->redScore(defender->getScore());
-        // 占领格子
-        defender->changeCampArea(attacker->getCampArea(), attacker->getCampLevel());
-    } else {
-        // 防御方胜利，攻击方卡牌被摧毁
-        attacker->redScore(attacker->getScore());
+    for(CellUnit *unit:m_cells){
+        if(unit->getCampCard()==CAMP::CAMP_NULL)
+            continue;
+        if(unit->getCard()->getSkillTiming()==SKILL_TIMING::ALWAYS && unit->getCard()->getSkillType()==SKILL_TYPE::GAINNUMBER_GAIN){
+            for(CellUnit *sec_unit:m_cells){
+                if(sec_unit->getCampCard()==CAMP::CAMP_NULL)
+                    continue;
+                if(unit->getCard()->gainedCamp && sec_unit->getCampCard()==unit->getCampCard()){
+                    unit->addScore(unit->getCard()->gainPerCard);
+                }
+                if(!unit->getCard()->gainedCamp && sec_unit->getCampCard()!=unit->getCampCard()){
+                    unit->addScore(unit->getCard()->gainPerCard);
+                }
+            }
+        }
     }
-    
-    emit sig_cellUpdated(attacker);
-    emit sig_cellUpdated(defender);
 }
 
 void GameController::summonSkill()
@@ -227,10 +236,57 @@ void GameController::summonSkill()
         return;
     if(m_selectedCard->getSkillTiming()!=SKILL_TIMING::PLACED)
         return;
-    QVector<int> summonlist = m_selectedCard->getSummonVector();
-    for(int id:summonlist){
-        emit sig_summonCard(id);
+    //召唤至手牌
+    if(m_selectedCard->getSkillType()==SKILL_TYPE::HAND_SUMMON){
+        QVector<int> summonlist = m_selectedCard->getSummonVector();
+        for(int id:summonlist){
+            emit sig_summonCard(id);
+        }
     }
+    //召唤至己方场上
+//    else if(m_selectedCard->getSkillType()==SKILL_TYPE::CELL_SUMMON){
+//        QVector<int> summonlist = m_selectedCard->getSummonVector();
+
+    //    }
+}
+
+void GameController::calculateCoverCard(CellUnit* placedCell,int oldscore)
+{
+    if(m_selectedCard->getType()!=TYPE::COVER)
+        return;
+    int placerow=placedCell->getrow();
+    int placecol=placedCell->getcol();
+//    if(m_selectedCard->getSkillTiming()==SKILL_TIMING::PLACED && m_selectedCard->getSkillType()==SKILL_TYPE::DESIGNATED_GAIN){
+        QHash<Offset,int> reinScore = m_selectedCard->getReinScore();
+        for(QHash<Offset,int>::const_iterator i = reinScore.constBegin();i != reinScore.constEnd();++i){
+            Offset point = i.key();
+            if(placerow+point.drow<0 || placerow+point.drow>2 || placecol+point.dcol<0 || placecol+point.dcol>4)
+                continue;
+            int targetindex = (placerow+point.drow)*5+placecol+point.dcol;
+            CAMP cardcamp = m_cells[targetindex]->getCampCard();
+            if(cardcamp==CAMP::CAMP_NULL)
+                continue;
+            if(m_selectedCard->getReinRange()==REIN_RANGE::SELF){
+                if(m_currentTurn==CAMP_TURN::TURN_RED && cardcamp==CAMP::CAMP_RED){
+                    m_cells[targetindex]->addScore(oldscore*i.value());
+                }
+                else if(m_currentTurn==CAMP_TURN::TURN_BLUE && cardcamp==CAMP::CAMP_BLUE){
+                    m_cells[targetindex]->addScore(oldscore*i.value());
+                }
+            }
+            else if(m_selectedCard->getReinRange()==REIN_RANGE::OPPONENT){
+                if(m_currentTurn==CAMP_TURN::TURN_RED && cardcamp==CAMP::CAMP_BLUE){
+                    m_cells[targetindex]->addScore(oldscore*i.value());
+                }
+                else if(m_currentTurn==CAMP_TURN::TURN_BLUE && cardcamp==CAMP::CAMP_RED){
+                    m_cells[targetindex]->addScore(oldscore*i.value());
+                }
+            }
+            else{
+                m_cells[targetindex]->addScore(oldscore*i.value());
+            }
+        }
+//    }
 }
 
 GAME_STATE GameController::getGameState() const
@@ -292,6 +348,140 @@ void GameController::addRedCard(Card *card)
 void GameController::addBlueCard(Card *card)
 {
     cards_blue.append(card);
+}
+
+void GameController::whenFirstRein(CellUnit *unit)
+{
+    int placerow=unit->getrow();
+    int placecol=unit->getcol();
+    QHash<Offset,int> reinScore = unit->getCard()->getReinScore();
+    REIN_RANGE reinrange = unit->getCard()->getReinRange();
+    for(QHash<Offset,int>::const_iterator i = reinScore.constBegin();i != reinScore.constEnd();++i){
+        Offset point = i.key();
+        if(placerow+point.drow<0 || placerow+point.drow>2 || placecol+point.dcol<0 || placecol+point.dcol>4)
+            continue;
+        int targetindex = (placerow+point.drow)*5+placecol+point.dcol;
+        CAMP cardcamp = m_cells[targetindex]->getCampCard();
+        if(cardcamp==CAMP::CAMP_NULL)
+            continue;
+        if(reinrange==REIN_RANGE::SELF && unit->getCampCard()==cardcamp){
+            m_cells[targetindex]->addScore(i.value());
+        }
+        if(reinrange==REIN_RANGE::OPPONENT && unit->getCampCard()!=cardcamp){
+            m_cells[targetindex]->addScore(i.value());
+        }
+        if(reinrange==REIN_RANGE::BOTH){
+            m_cells[targetindex]->addScore(i.value());
+        }
+    }
+}
+
+void GameController::onCardDestroy(CellUnit *unit, QHash<Offset, int> reinscore, REIN_RANGE reinrange)
+{
+    //计算销毁时对指定格指定方进行增益
+    int placerow=unit->getrow();
+    int placecol=unit->getcol();
+    for(QHash<Offset,int>::const_iterator i = reinscore.constBegin();i != reinscore.constEnd();++i){
+        Offset point = i.key();
+        if(placerow+point.drow<0 || placerow+point.drow>2 || placecol+point.dcol<0 || placecol+point.dcol>4)
+            continue;
+        int targetindex = (placerow+point.drow)*5+placecol+point.dcol;
+        CAMP cardcamp = m_cells[targetindex]->getCampCard();
+        if(cardcamp==CAMP::CAMP_NULL)
+            continue;
+        if(reinrange==REIN_RANGE::SELF){
+            if(cardcamp==unit->getCampCard())
+                m_cells[targetindex]->addScore(i.value());
+        }
+        else if(reinrange==REIN_RANGE::OPPONENT){
+            if(cardcamp!=unit->getCampCard())
+                m_cells[targetindex]->addScore(i.value());
+        }
+        else{
+            m_cells[targetindex]->addScore(i.value());
+        }
+    }
+    //计算指定方销毁时对自身增益
+    for(CellUnit *punit:m_cells){
+        if(punit->getCampCard()==CAMP::CAMP_NULL)
+            continue;
+        if(punit==unit)
+            continue;
+        if(punit->getCard()->getSkillTiming()==SKILL_TIMING::OURSIDE_DESTROY && punit->getCampCard()==unit->getCampCard()){
+            punit->addScore(punit->getCard()->gainPerCard);
+        }
+        if(punit->getCard()->getSkillTiming()==SKILL_TIMING::OPPONENT_DESTROY && punit->getCampCard()!=unit->getCampCard()){
+            punit->addScore(punit->getCard()->gainPerCard);
+        }
+        //计算因销毁受增益的卡牌而导致根据增益卡牌数量对自身增益卡牌的增益消失
+        if(punit->getCard()->getSkillTiming()==SKILL_TIMING::ALWAYS && punit->getCard()->getSkillType()==SKILL_TYPE::GAINNUMBER_GAIN){
+            if(punit->getCard()->gainedCamp && punit->getCampCard()==unit->getCampCard()){
+                punit->addScore(-punit->getCard()->gainPerCard);
+            }
+            if(!punit->getCard()->gainedCamp && punit->getCampCard()!=unit->getCampCard()){
+                punit->addScore(-punit->getCard()->gainPerCard);
+            }
+        }
+    }
+    //计算在场时增益的卡牌因为销毁失去对指定格的增益效果
+    if(unit->getCard()->getSkillTiming()==SKILL_TIMING::ALWAYS && unit->getCard()->getSkillType()==SKILL_TYPE::DESIGNATED_GAIN){
+        QHash<Offset,int> reinScore = unit->getCard()->getReinScore();
+        REIN_RANGE reinRange = unit->getCard()->getReinRange();
+        for(QHash<Offset,int>::const_iterator i = reinScore.constBegin();i != reinScore.constEnd();++i){
+            Offset point = i.key();
+            if(placerow+point.drow<0 || placerow+point.drow>2 || placecol+point.dcol<0 || placecol+point.dcol>4)
+                continue;
+            int targetindex = (placerow+point.drow)*5+placecol+point.dcol;
+            CAMP cardcamp = m_cells[targetindex]->getCampCard();
+            if(cardcamp==CAMP::CAMP_NULL)
+                continue;
+            if(reinRange==REIN_RANGE::SELF && unit->getCampCard()==cardcamp){
+                m_cells[targetindex]->addScore(-i.value());
+            }
+            else if(reinRange==REIN_RANGE::OPPONENT && unit->getCampCard()!=cardcamp){
+                m_cells[targetindex]->addScore(-i.value());
+            }
+            else if(reinRange==REIN_RANGE::BOTH){
+                m_cells[targetindex]->addScore(-i.value());
+            }
+        }
+    }
+    //重新计算阵地等级
+    int index = placerow*5+placecol;
+    cell_sequence.removeOne(index);
+    m_cells[0]->setLevel(1);
+    m_cells[5]->setLevel(1);
+    m_cells[10]->setLevel(1);
+    m_cells[4]->setLevel(1);
+    m_cells[9]->setLevel(1);
+    m_cells[14]->setLevel(1);
+    m_cells[1]->setLevel(0);
+    m_cells[2]->setLevel(0);
+    m_cells[3]->setLevel(0);
+    m_cells[6]->setLevel(0);
+    m_cells[7]->setLevel(0);
+    m_cells[8]->setLevel(0);
+    m_cells[11]->setLevel(0);
+    m_cells[12]->setLevel(0);
+    m_cells[13]->setLevel(0);
+    for(int i:cell_sequence){
+        QHash<Offset,int> reinCamp = m_cells[i]->getCard()->getReinCamp();
+        placerow = m_cells[i]->getrow();
+        placecol = m_cells[i]->getcol();
+        for(QHash<Offset,int>::const_iterator it = reinCamp.constBegin();it != reinCamp.constEnd();++it){
+            Offset point = it.key();
+            if(placerow+point.drow<0 || placerow+point.drow>2 || placecol+point.dcol<0 || placecol+point.dcol>4)
+                continue;
+            int targetindex = (placerow+point.drow)*5+placecol+point.dcol;
+            if(m_cells[targetindex]->getCampCard()!=CAMP::CAMP_NULL)
+                continue;
+            if(m_cells[i]->getCampCard()==m_cells[targetindex]->getCampArea())
+                m_cells[targetindex]->addLevel(it.value());
+            else
+                m_cells[targetindex]->changeCampArea(m_cells[i]->getCampCard(),it.value());
+        }
+    }
+    unit->destroyCard();
 }
 
 void GameController::calculateCampChange(CellUnit *placedCell)
